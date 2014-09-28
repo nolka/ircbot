@@ -1,0 +1,68 @@
+# -*- coding: utf8
+import sys 
+import socket 
+import string 
+import os
+
+class IrcClient():
+	_connInfo = None
+	_c = None # connection socket
+	_shutdownPending = False
+	_readBuf = 512
+	debugMode = False
+	allowReconnect = False
+	
+	def toLog(self, message):
+		if self.debugMode:
+			print message
+	
+	def sendMessage(self, message, raw=False):
+		self.toLog(message)
+		if raw:
+			self._c.send(message)
+	
+	def parseChat(self, message):
+		pass
+	
+	def parseSys(self, message):
+		parts = message.split(" ")
+		if parts[0].lower() == "ping":
+			if len(parts) == 2:
+				self.sendMessage("PONG %s\r\n" % parts[1][1:])
+	
+	def parseMessage(self, message):
+		self.toLog(message)
+		if message.startswith(':'):
+			self.parseChat(message)
+		else:
+			self.parseSys(message)
+	
+	def connect(self, connectionInfo):
+		self._connInfo = connectionInfo
+		self._c = socket.socket()
+		self._c.connect((connectionInfo['server'],connectionInfo['port']))
+		self._c.send("NICK %s\n" % connectionInfo['nick'])
+		self._c.send('USER %s HOST %s :%s\n' % (connectionInfo['ident'], connectionInfo['host'], connectionInfo['realName']))
+	
+	def disconnect(self):
+		if self._c is not None:
+			self._c.close()
+			self.toLog("Socket closed.")
+	
+	def loop(self):
+		while self._shutdownPending == False:
+#			try:
+				self.parseMessage(self._c.recv(self._readBuf))
+#			except:
+#				if self.allowReconnect:
+#					if self._connInfo is not None:
+#						self.connect(self._connInfo)
+#					else:
+#						self.toLog("Connection info damaged, exiting")
+#						self._shutdownPending = True
+#				else:
+#					self.toLog("Reconnect on disconnect is not allowed, exiting.")
+#					self._shutdownPending = True
+		self.toLog("Connection listener done...")
+		self.disconnect()
+	
